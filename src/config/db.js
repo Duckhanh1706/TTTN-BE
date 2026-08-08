@@ -9,6 +9,10 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "elearning_db",
   port: process.env.DB_PORT || 3306,
+  // Thêm đoạn này để kết nối bảo mật SSL với Aiven trên cloud
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 export default pool;

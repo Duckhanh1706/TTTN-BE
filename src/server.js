@@ -1,39 +1,44 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path"; // <-- Thêm thư viện path để xử lý đường dẫn thư mục
 import authRoutes from "./routes/authRoutes.js";
 import courseRoutes from "./routes/courseRoutes.js";
 import enrollmentRoutes from "./routes/enrollmentRoutes.js";
-import lessonRoutes from "./routes/lessonRoutes.js"; // <-- 1. Import route bài học
-import userRouter from "./routes/userRoutes.js"; // <-- 1. Import route user
+import lessonRoutes from "./routes/lessonRoutes.js";
+import userRouter from "./routes/userRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
-import revenueRoutes from "./routes/revenueRoutes.js"; // <-- 1. Import route doanh thu
+import revenueRoutes from "./routes/revenueRoutes.js";
 import promotionRoutes from "./routes/promotionRoutes.js";
-import paymentRoutes from "./routes/paymentRoutes.js"; // <-- 1. Import route thanh toán
-import certificateRoutes from "./routes/certificateRoutes.js"; // <-- 1. Import route chứng chỉ
-import examRoutes from "./routes/examRoutes.js"; // <-- 1. Import route đề thi
+import paymentRoutes from "./routes/paymentRoutes.js";
+import certificateRoutes from "./routes/certificateRoutes.js";
+import examRoutes from "./routes/examRoutes.js";
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Lấy đường dẫn thư mục hiện tại (hỗ trợ chuẩn ES Module)
+const __dirname = path.resolve();
+
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // Đảm bảo đường dẫn thư mục uploads chuẩn xác trên cloud
 
 // Sử dụng Routes API
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/enrollments", enrollmentRoutes);
-app.use("/api/lessons", lessonRoutes); // <-- 2. Đăng ký đường dẫn API cho bài học tại đây
+app.use("/api/lessons", lessonRoutes);
 app.use("/api/admin/users", userRouter);
 app.use("/api/admin/categories", categoryRoutes);
-app.use("/api/admin/revenue", revenueRoutes); // <-- 2. Đăng ký đường dẫn API cho doanh thu tại đây
-app.use("/api/admin/promotions", promotionRoutes); // <-- 2. Đăng ký đường dẫn API cho khuyến mãi tại đây
-app.use("/api/admin/payments", paymentRoutes); // <-- 2. Đăng ký đường dẫn API cho thanh toán tại đây
-app.use("/api/admin/certificates", certificateRoutes); // <-- 2. Đăng ký đường dẫn API cho chứng chỉ tại đây
-app.use("/api", examRoutes); // <-- 2. Đăng ký đường dẫn API cho đề thi tại đây
+app.use("/api/admin/revenue", revenueRoutes);
+app.use("/api/admin/promotions", promotionRoutes);
+app.use("/api/admin/payments", paymentRoutes);
+app.use("/api/admin/certificates", certificateRoutes);
+app.use("/api", examRoutes);
 
 // Route kiểm tra hệ thống
 app.get("/", (req, res) => {
@@ -41,5 +46,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server Backend đang chạy tại: http://localhost:${PORT}`);
+  console.log(`Server Backend đang chạy tại cổng ${PORT}`);
 });
