@@ -1,6 +1,6 @@
 import db from "../config/db.js";
 
-// 1. Lấy danh sách tất cả khóa học (Dùng cho trang chủ/danh sách chung)
+// 1. Lấy danh sách tất cả khóa học
 export const getAllCourses = async (req, res) => {
   try {
     const query = `
@@ -24,16 +24,17 @@ export const getAllCourses = async (req, res) => {
   }
 };
 
-// 1.1. Lấy danh sách khóa học CHỈ THUỘC VỀ giảng viên đang đăng nhập
+// 1.1. Lấy danh sách khóa học của giảng viên đang đăng nhập
 export const getTeacherCourses = async (req, res) => {
   try {
     const teacherId = req.user ? req.user.id : null;
-
     if (!teacherId) {
-      return res.status(401).json({
-        success: false,
-        message: "Chưa xác thực thông tin giảng viên!",
-      });
+      return res
+        .status(401)
+        .json({
+          success: false,
+          message: "Chưa xác thực thông tin giảng viên!",
+        });
     }
 
     const query = `
@@ -51,10 +52,12 @@ export const getTeacherCourses = async (req, res) => {
     return res.status(200).json(rows);
   } catch (error) {
     console.error("Lỗi lấy danh sách khóa học của giảng viên:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Lỗi máy chủ khi lấy danh sách khóa học",
-    });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Lỗi máy chủ khi lấy danh sách khóa học",
+      });
   }
 };
 
@@ -82,10 +85,12 @@ export const getCourseById = async (req, res) => {
     return res.status(200).json(rows[0]);
   } catch (error) {
     console.error("Lỗi lấy chi tiết khóa học:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Lỗi máy chủ khi lấy chi tiết khóa học",
-    });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Lỗi máy chủ khi lấy chi tiết khóa học",
+      });
   }
 };
 
@@ -101,14 +106,15 @@ export const createCourse = async (req, res) => {
       level,
       commitment,
     } = req.body;
-
     const teacher_id = req.user ? req.user.id : null;
 
     if (!teacher_id) {
-      return res.status(401).json({
-        success: false,
-        message: "Chưa xác thực thông tin giảng viên!",
-      });
+      return res
+        .status(401)
+        .json({
+          success: false,
+          message: "Chưa xác thực thông tin giảng viên!",
+        });
     }
 
     const insertQuery = `
@@ -140,13 +146,66 @@ export const createCourse = async (req, res) => {
   }
 };
 
-// 4. Lấy tất cả khóa học kèm tên giảng viên (Dành cho Admin duyệt)
+// 3.1. Cập nhật thông tin khóa học (Khắc phục lỗi 404)
+export const updateCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      description,
+      price,
+      oldPrice,
+      thumbnail,
+      category,
+      level,
+      duration,
+      shortDescription,
+    } = req.body;
+
+    const [existing] = await db.execute("SELECT * FROM courses WHERE id = ?", [
+      id,
+    ]);
+    if (existing.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy khóa học!" });
+    }
+
+    const updateQuery = `
+      UPDATE courses 
+      SET title = ?, description = ?, price = ?, old_price = ?, thumbnail = ?, category = ?, level = ?, duration = ?, short_description = ?
+      WHERE id = ?
+    `;
+
+    await db.execute(updateQuery, [
+      title,
+      description,
+      price || 0,
+      oldPrice || null,
+      thumbnail || null,
+      category || "General",
+      level || "Cơ bản",
+      duration || "3 tháng",
+      shortDescription || null,
+      id,
+    ]);
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Cập nhật khóa học thành công!" });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật khóa học:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Lỗi máy chủ khi cập nhật khóa học" });
+  }
+};
+
+// 4. Lấy tất cả khóa học cho Admin
 export const getAdminAllCourses = async (req, res) => {
   try {
     const query = `
-      SELECT 
-        c.*, 
-        u.name AS instructor_name
+      SELECT c.*, u.name AS instructor_name
       FROM courses c 
       LEFT JOIN users u ON c.teacher_id = u.id
       ORDER BY c.id DESC
@@ -155,10 +214,12 @@ export const getAdminAllCourses = async (req, res) => {
     return res.status(200).json({ success: true, courses: rows });
   } catch (error) {
     console.error("Lỗi admin lấy danh sách khóa học:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Lỗi máy chủ khi lấy danh sách khóa học",
-    });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Lỗi máy chủ khi lấy danh sách khóa học",
+      });
   }
 };
 
@@ -166,8 +227,9 @@ export const getAdminAllCourses = async (req, res) => {
 export const approveCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const query = `UPDATE courses SET status = 'Đã duyệt' WHERE id = ?`;
-    await db.execute(query, [id]);
+    await db.execute(`UPDATE courses SET status = 'Đã duyệt' WHERE id = ?`, [
+      id,
+    ]);
     return res
       .status(200)
       .json({ success: true, message: "Phê duyệt khóa học thành công!" });
@@ -179,12 +241,11 @@ export const approveCourse = async (req, res) => {
   }
 };
 
-// 6. Từ chối và Xóa vĩnh viễn khóa học khỏi CSDL (Admin)
+// 6. Xóa khóa học (Admin)
 export const rejectCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const query = `DELETE FROM courses WHERE id = ?`;
-    await db.execute(query, [id]);
+    await db.execute(`DELETE FROM courses WHERE id = ?`, [id]);
     return res
       .status(200)
       .json({
