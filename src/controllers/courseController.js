@@ -117,12 +117,18 @@ export const updateCourse = async (req, res) => {
 
     const currentCourse = existing[0];
 
-    // 2. Xử lý thumbnail: Nếu có file mới gửi lên qua multer thì dùng đường dẫn mới, ngược lại giữ nguyên ảnh cũ trong DB
+    // 2. Xử lý thumbnail: Nếu có file mới gửi lên qua multer thì dùng, không thì giữ lại ảnh cũ
     const thumbnail = req.file
       ? `/uploads/${req.file.filename}`
       : currentCourse.thumbnail;
 
-    // 3. Sử dụng giá trị mới từ request body, nếu không truyền (undefined/null) thì giữ lại giá trị cũ trong DB để tránh mất dữ liệu
+    // 3. Chuẩn hóa dữ liệu số để tránh lỗi rỗng (empty string) làm sập kiểu decimal của MySQL
+    const parsedPrice =
+      price !== undefined && price !== "" ? price : currentCourse.price || 0;
+    const parsedOldPrice =
+      oldPrice !== undefined && oldPrice !== "" ? oldPrice : null;
+
+    // 4. Câu lệnh UPDATE bảo toàn dữ liệu cũ nếu trường nào không được truyền lên
     const updateQuery = `
       UPDATE courses 
       SET title = ?, description = ?, price = ?, old_price = ?, thumbnail = ?, category = ?, level = ?, duration = ?, short_description = ?, commitment = ?
@@ -132,8 +138,8 @@ export const updateCourse = async (req, res) => {
     await db.execute(updateQuery, [
       title !== undefined ? title : currentCourse.title,
       description !== undefined ? description : currentCourse.description,
-      price !== undefined ? price : currentCourse.price,
-      oldPrice !== undefined ? oldPrice : currentCourse.old_price,
+      parsedPrice,
+      parsedOldPrice,
       thumbnail,
       category !== undefined ? category : currentCourse.category,
       level !== undefined ? level : currentCourse.level,
