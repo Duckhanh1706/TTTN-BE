@@ -1,4 +1,5 @@
 import express from "express";
+import upload from "../middlewares/upload.js";
 import {
   getAllCourses,
   getTeacherCourses,
@@ -30,9 +31,11 @@ router.get("/teacher/my-courses", verifyToken, isTeacher, getTeacherCourses);
 // 3. Cơ bản chung & Cập nhật
 router.get("/", getAllCourses);
 router.post("/", verifyToken, createCourse);
-router.put("/:id", verifyToken, updateCourse); // Bổ sung phương thức PUT để fix lỗi 404 khi update
 
-// 4. Route động theo ID (Đặt ở cuối)
+// Đã gắn thêm middleware upload.single để xử lý FormData và file thumbnail
+router.put("/:id", verifyToken, upload.single("thumbnail"), updateCourse);
+
+// 4. Route động theo ID
 router.get("/:id", getCourseById);
 
 export default router;

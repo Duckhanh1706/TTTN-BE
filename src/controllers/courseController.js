@@ -1,13 +1,9 @@
 import db from "../config/db.js";
 
-// 1. Lấy danh sách tất cả khóa học
 export const getAllCourses = async (req, res) => {
   try {
     const query = `
-      SELECT 
-        c.*, 
-        COUNT(DISTINCT l.id) AS lessons_count,
-        COUNT(DISTINCT e.id) AS students_count
+      SELECT c.*, COUNT(DISTINCT l.id) AS lessons_count, COUNT(DISTINCT e.id) AS students_count
       FROM courses c 
       LEFT JOIN lessons l ON c.id = l.course_id 
       LEFT JOIN enrollments e ON c.id = e.course_id
@@ -17,31 +13,20 @@ export const getAllCourses = async (req, res) => {
     return res.status(200).json(rows);
   } catch (error) {
     console.error("Lỗi lấy danh sách khóa học:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Lỗi máy chủ khi lấy danh sách khóa học",
-    });
+    return res.status(500).json({ success: false, message: "Lỗi máy chủ" });
   }
 };
 
-// 1.1. Lấy danh sách khóa học của giảng viên đang đăng nhập
 export const getTeacherCourses = async (req, res) => {
   try {
     const teacherId = req.user ? req.user.id : null;
-    if (!teacherId) {
+    if (!teacherId)
       return res
         .status(401)
-        .json({
-          success: false,
-          message: "Chưa xác thực thông tin giảng viên!",
-        });
-    }
+        .json({ success: false, message: "Chưa xác thực!" });
 
     const query = `
-      SELECT 
-        c.*, 
-        COUNT(DISTINCT l.id) AS lessons_count,
-        COUNT(DISTINCT e.id) AS students_count
+      SELECT c.*, COUNT(DISTINCT l.id) AS lessons_count, COUNT(DISTINCT e.id) AS students_count
       FROM courses c 
       LEFT JOIN lessons l ON c.id = l.course_id 
       LEFT JOIN enrollments e ON c.id = e.course_id
@@ -51,50 +36,25 @@ export const getTeacherCourses = async (req, res) => {
     const [rows] = await db.execute(query, [teacherId]);
     return res.status(200).json(rows);
   } catch (error) {
-    console.error("Lỗi lấy danh sách khóa học của giảng viên:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Lỗi máy chủ khi lấy danh sách khóa học",
-      });
+    return res.status(500).json({ success: false, message: "Lỗi máy chủ" });
   }
 };
 
-// 2. Lấy chi tiết một khóa học theo ID
 export const getCourseById = async (req, res) => {
   try {
     const { id } = req.params;
-    const query = `
-      SELECT 
-        c.*, 
-        COUNT(l.id) AS lessons_count 
-      FROM courses c 
-      LEFT JOIN lessons l ON c.id = l.course_id 
-      WHERE c.id = ?
-      GROUP BY c.id
-    `;
+    const query = `SELECT c.*, COUNT(l.id) AS lessons_count FROM courses c LEFT JOIN lessons l ON c.id = l.course_id WHERE c.id = ? GROUP BY c.id`;
     const [rows] = await db.execute(query, [id]);
-
-    if (rows.length === 0) {
+    if (rows.length === 0)
       return res
         .status(404)
         .json({ success: false, message: "Không tìm thấy khóa học" });
-    }
-
     return res.status(200).json(rows[0]);
   } catch (error) {
-    console.error("Lỗi lấy chi tiết khóa học:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Lỗi máy chủ khi lấy chi tiết khóa học",
-      });
+    return res.status(500).json({ success: false, message: "Lỗi máy chủ" });
   }
 };
 
-// 3. Tạo khóa học mới
 export const createCourse = async (req, res) => {
   try {
     const {
@@ -106,47 +66,31 @@ export const createCourse = async (req, res) => {
       level,
       commitment,
     } = req.body;
-    const teacher_id = req.user ? req.user.id : null;
-
-    if (!teacher_id) {
+    const teacher_id = req.user?.id;
+    if (!teacher_id)
       return res
         .status(401)
-        .json({
-          success: false,
-          message: "Chưa xác thực thông tin giảng viên!",
-        });
-    }
+        .json({ success: false, message: "Chưa xác thực!" });
 
-    const insertQuery = `
-      INSERT INTO courses (title, description, price, thumbnail, teacher_id, category, level, commitment) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const [result] = await db.execute(insertQuery, [
-      title,
-      description,
-      price || 0,
-      thumbnail || null,
-      teacher_id,
-      category || "General",
-      level || "Cơ bản",
-      commitment || "Cam kết chất lượng",
-    ]);
-
-    return res.status(201).json({
-      success: true,
-      message: "Tạo khóa học thành công!",
-      courseId: result.insertId,
-    });
+    const [result] = await db.execute(
+      `INSERT INTO courses (title, description, price, thumbnail, teacher_id, category, level, commitment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        title,
+        description,
+        price || 0,
+        thumbnail || null,
+        teacher_id,
+        category || "General",
+        level || "Cơ bản",
+        commitment || "Cam kết chất lượng",
+      ],
+    );
+    return res.status(201).json({ success: true, courseId: result.insertId });
   } catch (error) {
-    console.error("Lỗi khi tạo khóa học:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Lỗi máy chủ khi tạo khóa học" });
+    return res.status(500).json({ success: false, message: "Lỗi máy chủ" });
   }
 };
 
-// 3.1. Cập nhật thông tin khóa học (Khắc phục lỗi và đồng bộ database)
 export const updateCourse = async (req, res) => {
   try {
     const { id } = req.params;
@@ -155,7 +99,6 @@ export const updateCourse = async (req, res) => {
       description,
       price,
       oldPrice,
-      thumbnail,
       category,
       level,
       duration,
@@ -163,29 +106,31 @@ export const updateCourse = async (req, res) => {
       commitment,
     } = req.body;
 
-    // 1. Kiểm tra khóa học có tồn tại không
     const [existing] = await db.execute("SELECT * FROM courses WHERE id = ?", [
       id,
     ]);
-    if (existing.length === 0) {
+    if (existing.length === 0)
       return res
         .status(404)
-        .json({ success: false, message: "Không tìm thấy khóa học!" });
-    }
+        .json({ success: false, message: "Không tìm thấy!" });
 
-    // 2. Câu lệnh UPDATE khớp hoàn toàn các cột trong database của bạn
+    // Xử lý thumbnail: Nếu có file mới thì dùng, không thì lấy ảnh cũ từ DB
+    const thumbnail = req.file
+      ? `/uploads/${req.file.filename}`
+      : existing[0].thumbnail;
+
     const updateQuery = `
       UPDATE courses 
       SET title = ?, description = ?, price = ?, old_price = ?, thumbnail = ?, category = ?, level = ?, duration = ?, short_description = ?, commitment = ?
       WHERE id = ?
     `;
 
-    const [result] = await db.execute(updateQuery, [
+    await db.execute(updateQuery, [
       title || "",
       description || "",
       price || 0,
       oldPrice || null,
-      thumbnail || null,
+      thumbnail,
       category || "General",
       level || "Cơ bản",
       duration || "3 tháng",
@@ -194,74 +139,42 @@ export const updateCourse = async (req, res) => {
       id,
     ]);
 
-    // Kiểm tra xem database có thực sự nhận thay đổi không
-    return res.status(200).json({
-      success: true,
-      message: "Cập nhật khóa học thành công!",
-      affectedRows: result.affectedRows,
-    });
-  } catch (error) {
-    console.error("Lỗi khi cập nhật khóa học:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Lỗi máy chủ khi cập nhật khóa học: " + error.message,
-    });
-  }
-};
-
-// 4. Lấy tất cả khóa học cho Admin
-export const getAdminAllCourses = async (req, res) => {
-  try {
-    const query = `
-      SELECT c.*, u.name AS instructor_name
-      FROM courses c 
-      LEFT JOIN users u ON c.teacher_id = u.id
-      ORDER BY c.id DESC
-    `;
-    const [rows] = await db.execute(query);
-    return res.status(200).json({ success: true, courses: rows });
-  } catch (error) {
-    console.error("Lỗi admin lấy danh sách khóa học:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Lỗi máy chủ khi lấy danh sách khóa học",
-      });
-  }
-};
-
-// 5. Phê duyệt khóa học (Admin)
-export const approveCourse = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await db.execute(`UPDATE courses SET status = 'Đã duyệt' WHERE id = ?`, [
-      id,
-    ]);
     return res
       .status(200)
-      .json({ success: true, message: "Phê duyệt khóa học thành công!" });
+      .json({ success: true, message: "Cập nhật thành công!" });
   } catch (error) {
-    console.error("Lỗi phê duyệt khóa học:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Lỗi máy chủ khi phê duyệt" });
+    console.error("Lỗi cập nhật:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// 6. Xóa khóa học (Admin)
+export const getAdminAllCourses = async (req, res) => {
+  try {
+    const [rows] = await db.execute(
+      `SELECT c.*, u.name AS instructor_name FROM courses c LEFT JOIN users u ON c.teacher_id = u.id ORDER BY c.id DESC`,
+    );
+    return res.status(200).json({ success: true, courses: rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Lỗi máy chủ" });
+  }
+};
+
+export const approveCourse = async (req, res) => {
+  try {
+    await db.execute(`UPDATE courses SET status = 'Đã duyệt' WHERE id = ?`, [
+      req.params.id,
+    ]);
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ success: false });
+  }
+};
+
 export const rejectCourse = async (req, res) => {
   try {
-    const { id } = req.params;
-    await db.execute(`DELETE FROM courses WHERE id = ?`, [id]);
-    return res.status(200).json({
-      success: true,
-      message: "Đã từ chối và xóa khóa học khỏi CSDL!",
-    });
+    await db.execute(`DELETE FROM courses WHERE id = ?`, [req.params.id]);
+    return res.status(200).json({ success: true });
   } catch (error) {
-    console.error("Lỗi từ chối/xóa khóa học:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Lỗi máy chủ khi từ chối khóa học" });
+    return res.status(500).json({ success: false });
   }
 };
