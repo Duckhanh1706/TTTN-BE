@@ -18,11 +18,18 @@ const storage = multer.diskStorage({
   },
 });
 
+// Cho phép cả định dạng hình ảnh và video
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("video/")) {
+  if (
+    file.mimetype.startsWith("video/") ||
+    file.mimetype.startsWith("image/")
+  ) {
     cb(null, true);
   } else {
-    cb(new Error("Chỉ chấp nhận các tệp định dạng video!"), false);
+    cb(
+      new Error("Chỉ chấp nhận các tệp định dạng hình ảnh hoặc video!"),
+      false,
+    );
   }
 };
 
