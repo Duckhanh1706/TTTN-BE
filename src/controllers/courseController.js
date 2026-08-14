@@ -106,6 +106,7 @@ export const updateCourse = async (req, res) => {
       commitment,
     } = req.body;
 
+    // 1. Kiểm tra khóa học có tồn tại hay không
     const [existing] = await db.execute("SELECT * FROM courses WHERE id = ?", [
       id,
     ]);
@@ -114,11 +115,14 @@ export const updateCourse = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Không tìm thấy!" });
 
-    // Xử lý thumbnail: Nếu có file mới thì dùng, không thì lấy ảnh cũ từ DB
+    const currentCourse = existing[0];
+
+    // 2. Xử lý thumbnail: Nếu có file mới gửi lên qua multer thì dùng đường dẫn mới, ngược lại giữ nguyên ảnh cũ trong DB
     const thumbnail = req.file
       ? `/uploads/${req.file.filename}`
-      : existing[0].thumbnail;
+      : currentCourse.thumbnail;
 
+    // 3. Sử dụng giá trị mới từ request body, nếu không truyền (undefined/null) thì giữ lại giá trị cũ trong DB để tránh mất dữ liệu
     const updateQuery = `
       UPDATE courses 
       SET title = ?, description = ?, price = ?, old_price = ?, thumbnail = ?, category = ?, level = ?, duration = ?, short_description = ?, commitment = ?
@@ -126,16 +130,18 @@ export const updateCourse = async (req, res) => {
     `;
 
     await db.execute(updateQuery, [
-      title || "",
-      description || "",
-      price || 0,
-      oldPrice || null,
+      title !== undefined ? title : currentCourse.title,
+      description !== undefined ? description : currentCourse.description,
+      price !== undefined ? price : currentCourse.price,
+      oldPrice !== undefined ? oldPrice : currentCourse.old_price,
       thumbnail,
-      category || "General",
-      level || "Cơ bản",
-      duration || "3 tháng",
-      shortDescription || null,
-      commitment || "Cam kết chất lượng",
+      category !== undefined ? category : currentCourse.category,
+      level !== undefined ? level : currentCourse.level,
+      duration !== undefined ? duration : currentCourse.duration,
+      shortDescription !== undefined
+        ? shortDescription
+        : currentCourse.short_description,
+      commitment !== undefined ? commitment : currentCourse.commitment,
       id,
     ]);
 
