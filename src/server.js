@@ -20,8 +20,19 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const __dirname = path.resolve();
 
-app.use(cors());
+// 1. Cấu hình CORS đầy đủ phương thức để tránh bị chặn preflight request
+app.use(
+  cors({
+    origin: "*", // Hoặc có thể giới hạn domain frontend của bạn
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+
+// 2. Bổ sung middleware để parse dữ liệu gửi lên từ body (CỰC KỲ QUAN TRỌNG)
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/api/auth", authRoutes);

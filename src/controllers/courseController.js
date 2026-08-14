@@ -146,7 +146,7 @@ export const createCourse = async (req, res) => {
   }
 };
 
-// 3.1. Cập nhật thông tin khóa học (Khắc phục lỗi 404)
+// 3.1. Cập nhật thông tin khóa học (Khắc phục lỗi và đồng bộ database)
 export const updateCourse = async (req, res) => {
   try {
     const { id } = req.params;
@@ -160,8 +160,10 @@ export const updateCourse = async (req, res) => {
       level,
       duration,
       shortDescription,
+      commitment,
     } = req.body;
 
+    // 1. Kiểm tra khóa học có tồn tại không
     const [existing] = await db.execute("SELECT * FROM courses WHERE id = ?", [
       id,
     ]);
@@ -171,15 +173,16 @@ export const updateCourse = async (req, res) => {
         .json({ success: false, message: "Không tìm thấy khóa học!" });
     }
 
+    // 2. Câu lệnh UPDATE khớp hoàn toàn các cột trong database của bạn
     const updateQuery = `
       UPDATE courses 
-      SET title = ?, description = ?, price = ?, old_price = ?, thumbnail = ?, category = ?, level = ?, duration = ?, short_description = ?
+      SET title = ?, description = ?, price = ?, old_price = ?, thumbnail = ?, category = ?, level = ?, duration = ?, short_description = ?, commitment = ?
       WHERE id = ?
     `;
 
-    await db.execute(updateQuery, [
-      title,
-      description,
+    const [result] = await db.execute(updateQuery, [
+      title || "",
+      description || "",
       price || 0,
       oldPrice || null,
       thumbnail || null,
@@ -187,17 +190,22 @@ export const updateCourse = async (req, res) => {
       level || "Cơ bản",
       duration || "3 tháng",
       shortDescription || null,
+      commitment || "Cam kết chất lượng",
       id,
     ]);
 
-    return res
-      .status(200)
-      .json({ success: true, message: "Cập nhật khóa học thành công!" });
+    // Kiểm tra xem database có thực sự nhận thay đổi không
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật khóa học thành công!",
+      affectedRows: result.affectedRows,
+    });
   } catch (error) {
     console.error("Lỗi khi cập nhật khóa học:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Lỗi máy chủ khi cập nhật khóa học" });
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ khi cập nhật khóa học: " + error.message,
+    });
   }
 };
 
@@ -246,12 +254,10 @@ export const rejectCourse = async (req, res) => {
   try {
     const { id } = req.params;
     await db.execute(`DELETE FROM courses WHERE id = ?`, [id]);
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Đã từ chối và xóa khóa học khỏi CSDL!",
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Đã từ chối và xóa khóa học khỏi CSDL!",
+    });
   } catch (error) {
     console.error("Lỗi từ chối/xóa khóa học:", error);
     return res
